@@ -2,8 +2,29 @@ import asyncHandler from "express-async-handler";
 import generateToken from "../utils/generateToken.js";
 import User from "../models/user.js";
 
+// Validation helper
+const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validatePassword = (password) => {
+  return password && password.length >= 6;
+};
+
 const authUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+
+  // Input validation
+  if (!email || !password) {
+    res.status(400);
+    throw new Error("Email and password are required");
+  }
+
+  if (!validateEmail(email)) {
+    res.status(400);
+    throw new Error("Invalid email format");
+  }
 
   const user = await User.findOne({ email });
 
@@ -24,6 +45,27 @@ const authUser = asyncHandler(async (req, res) => {
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
+  // Input validation
+  if (!name || !email || !password) {
+    res.status(400);
+    throw new Error("Name, email, and password are required");
+  }
+
+  if (!validateEmail(email)) {
+    res.status(400);
+    throw new Error("Invalid email format");
+  }
+
+  if (!validatePassword(password)) {
+    res.status(400);
+    throw new Error("Password must be at least 6 characters long");
+  }
+
+  if (name.trim().length < 2) {
+    res.status(400);
+    throw new Error("Name must be at least 2 characters long");
+  }
+
   const userExists = await User.findOne({ email });
 
   if (userExists) {
@@ -32,8 +74,8 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const user = await User.create({
-    name,
-    email,
+    name: name.trim(),
+    email: email.toLowerCase(),
     password,
   });
 
