@@ -1,53 +1,72 @@
 import asyncHandler from "express-async-handler";
 import Attendance from "../models/attendance.js";
 
+// Helper function to get formatted date
+const getFormattedDate = (dateString) => {
+  if (dateString) {
+    return dateString;
+  }
+  return new Date().toString().substring(0, 15);
+};
+
+// Helper function for date validation
+const isValidDate = (dateString) => {
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date);
+};
+
 const getAttendanceByRoomNo = asyncHandler(async (req, res) => {
-  const date = req.body.date || Date().toString().substring(0, 15);
+  const { roomNo, date } = req.body;
+
+  // Validate input
+  if (!roomNo) {
+    res.status(400);
+    throw new Error("Room number is required");
+  }
+
+  const formattedDate = getFormattedDate(date);
+
   const attendance = await Attendance.findOne({
-    roomNo: { $in: [req.body.roomNo] },
-    date: date,
+    roomNo: { $in: [roomNo] },
+    date: formattedDate,
   });
+
   if (attendance) {
     res.json(attendance);
   } else {
     res.status(404);
     throw new Error(
-      `You didn't take attendance today for room  No:${req.params.roomId}`
+      `Attendance not found for room No: ${roomNo} on ${formattedDate}`
     );
   }
 });
 
 const getAttendance = asyncHandler(async (req, res) => {
-  const date = req.body.date || Date().toString().substring(0, 15);
+  const { date } = req.body;
+  const formattedDate = getFormattedDate(date);
+
   const attendance = await Attendance.findOne({
-    date: date,
+    date: formattedDate,
   });
+
   if (attendance) {
     res.json(attendance);
   } else {
     res.status(404);
-    throw new Error(`You didn't take attendance ${date}!!`);
+    throw new Error(`No attendance record found for ${formattedDate}`);
   }
 });
 
 const enterAttendanceByRoomNo = asyncHandler(async (req, res) => {
-  const date = req.body.date || Date().toString().substring(0, 15);
-  const attendance = await Attendance.findOne({
-    date: date,
-  });
-  if (attendance) {
-    const dataTemp = attendance.data;
-    const detailsTemp = attendance.details;
-    for (const [key, value] of Object.entries(req.body.data)) {
-      dataTemp.set(key, value);
-    }
-    for (const [key, value] of Object.entries(req.body.details)) {
-      detailsTemp.set(key, value);
-    }
-    attendance.details = detailsTemp;
-    attendance.data = dataTemp;
+  const { data, details, date } = req.body;
 
-    const updatedAttendance = await attendance.save();
+  // Validate input
+  if (!data || !details || Object.keys(data).length === 0) {
+    res.status(400);
+    throw new Error("Attendance data and details are required");
+  }
+
+  const formattedDate = getFormattedDate(date);
     res.json(updatedAttendance);
   } else {
     const newAttendance = await Attendance.create({
