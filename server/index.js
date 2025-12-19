@@ -8,15 +8,31 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import connectDB from "./config/mongoDBConfig.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
+
+// Configuration
 dotenv.config();
 connectDB();
+
 const app = express();
 
+// Middleware: Logging
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
+} else {
+  app.use(morgan("combined"));
 }
+
+// Middleware: Body Parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Middleware: Security Headers
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  next();
+});
 app.use("/users", userRoutes);
 app.use("/student", studentRoutes);
 app.use("/attendance", attendanceRoutes);
