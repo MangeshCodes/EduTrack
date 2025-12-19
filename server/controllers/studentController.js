@@ -1,6 +1,36 @@
 import asyncHandler from "express-async-handler";
 import Student from "../models/student.js";
 import Attendance from "../models/attendance.js";
+import { VALIDATION_RULES } from "../constants/validationConstants.js";
+
+// Helper function to validate student data
+const validateStudentData = (data) => {
+  const { name, contact, roomNo, blockNo } = data;
+  const errors = [];
+
+  if (!name || name.trim().length < VALIDATION_RULES.STUDENT.NAME_MIN_LENGTH) {
+    errors.push("Name must be at least 2 characters long");
+  }
+
+  if (
+    name &&
+    name.length > VALIDATION_RULES.STUDENT.NAME_MAX_LENGTH
+  ) {
+    errors.push(
+      `Name must not exceed ${VALIDATION_RULES.STUDENT.NAME_MAX_LENGTH} characters`
+    );
+  }
+
+  if (contact && !VALIDATION_RULES.STUDENT.PHONE_PATTERN.test(contact)) {
+    errors.push("Phone number must be 10 digits");
+  }
+
+  if (!roomNo || !blockNo) {
+    errors.push("Room number and block number are required");
+  }
+
+  return errors;
+};
 
 const addStudent = asyncHandler(async (req, res) => {
   const {
@@ -16,16 +46,23 @@ const addStudent = asyncHandler(async (req, res) => {
     status,
   } = req.body;
 
-  const studentExist = await Student.findOne({ name: name });
+  // Validate input
+  const validationErrors = validateStudentData(req.body);
+  if (validationErrors.length > 0) {
+    res.status(400);
+    throw new Error(validationErrors.join(", "));
+  }
+
+  const studentExist = await Student.findOne({ name: name.trim() });
 
   if (studentExist) {
     res.status(400);
-    throw new Error("Student already exists");
+    throw new Error("Student with this name already exists");
   }
 
   const student = await Student.create({
-    name,
-    address,
+    name: name.trim(),
+    address: address?.trim(),
     category,
     city,
     contact,
